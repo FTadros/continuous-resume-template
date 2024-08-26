@@ -1,0 +1,11 @@
+*.log
+*.aux
+*.out
+**/.terraform/*
+
+*.tfstate
+*.tfstate.*
+*.tfvars
+
+src/*.pdf
+.vscode

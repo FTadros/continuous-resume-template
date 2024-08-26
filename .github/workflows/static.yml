@@ -1,0 +1,64 @@
+name: Build and Deploy Resume to Pages
+on:
+    push:
+        branches:
+            - main
+        paths:
+            - "src/**/*.tex" # Only trigger for .tex file changes
+    workflow_dispatch:
+
+permissions:
+    contents: write
+    pull-requests: write
+    pages: write
+    id-token: write
+    packages: read
+
+concurrency:
+    group: "pages"
+    cancel-in-progress: false
+
+env:
+    REGISTRY: ghcr.io
+    IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+    build-pdf:
+        runs-on: ubuntu-latest
+        steps:
+            - name: Pull image
+              run: docker pull felotadros/resume-builder
+            - name: Checkout repository
+              uses: actions/checkout@v4
+            - name: Compile resume
+              run: |
+                  cd src/ && echo "Building LaTeX file..." && \
+                  docker run --rm -i -v "$PWD":/data felotadros/resume-builder pdflatex -interaction=nonstopmode *.tex & echo "LaTeX build complete."
+            - name: Update file on github
+              run: |
+                  cd src/ && git add *.pdf -f && \
+                  git config --global user.email "github-actions[bot]@users.noreply.github.com" && \
+                  git config --global user.name "github-actions[bot]" && \
+                  git config advice.addIgnoredFile false && \
+                  git commit -m "Update pdf" && \
+                  git push
+    deploy:
+        needs: build-pdf
+        environment:
+            name: github-pages
+            url: ${{ steps.deployment.outputs.page_url }}
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v3
+            - name: Pull latest changes
+              run: git pull
+            - name: Setup Pages
+              uses: actions/configure-pages@v3
+            - name: Upload artifact
+              uses: actions/upload-pages-artifact@v2
+              with:
+                  path: "src"
+            - name: Deploy to GitHub Pages
+              id: deployment
+              uses: actions/deploy-pages@v2
