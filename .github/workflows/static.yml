@@ -26,22 +26,21 @@ jobs:
     build-pdf:
         runs-on: ubuntu-latest
         steps:
-            - name: Docker login
-              run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ${{ env.REGISTRY }} -u ${{ github.actor }} --password-stdin
             - name: Pull image
-              run: docker pull ghcr.io/ftadros/resume:main
+              run: docker pull felotadros/resume-builder
             - name: Checkout repository
               uses: actions/checkout@v4
             - name: Compile resume
               run: |
                   cd src/ && echo "Building LaTeX file..." && \
-                  docker run --rm -i -v "$PWD":/data ghcr.io/ftadros/resume:main pdflatex -interaction=nonstopmode *.tex & echo "LaTeX build complete."
+                  docker run --rm -i -v "$PWD":/data felotadros/resume-builder pdflatex -interaction=nonstopmode *.tex & echo "LaTeX build complete."
             - name: Update file on github
               run: |
-                  cd src/ && git add *.pdf
-                  git config --global user.email "github-actions[bot]@users.noreply.github.com"
-                  git config --global user.name "github-actions[bot]"
-                  git commit -m "Update pdf"
+                  cd src/ && git add *.pdf -f && \
+                  git config --global user.email "github-actions[bot]@users.noreply.github.com" && \
+                  git config --global user.name "github-actions[bot]" && \
+                  git config advice.addIgnoredFile false && \
+                  git commit -m "Update pdf" && \
                   git push
     deploy:
         needs: build-pdf
